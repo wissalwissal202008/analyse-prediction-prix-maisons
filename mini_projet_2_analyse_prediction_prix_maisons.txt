@@ -1,0 +1,203 @@
+MINI-PROJET 2 : ANALYSE ET PREDICTION DES PRIX DES MAISONS
+===========================================================
+
+OBJECTIF
+--------
+Les étudiants commencent par effectuer des calculs statistiques et analyser un jeu de données. Ensuite, ils entraînent un modèle de Machine Learning et construisent une application Streamlit.
+
+Les prix sont fictifs et exprimés en milliers de dirhams (kDH).
+
+PARTIE 1 - JEU DE DONNEES
+-------------------------
+Maison | Superficie (m²) | Chambres | Ancienneté (ans) | Prix (kDH)
+A      | 50              | 1        | 20               | 400
+B      | 60              | 2        | 15               | 480
+C      | 70              | 2        | 12               | 530
+D      | 80              | 3        | 10               | 650
+E      | 90              | 3        | 8                | 700
+F      | 100             | 3        | 5                | 820
+G      | 110             | 4        | 4                | 850
+H      | 120             | 4        | 2                | 960
+
+PARTIE 2 - CALCULS MANUELS
+--------------------------
+Questions :
+1. Calculer le prix moyen des huit maisons.
+2. Déterminer le prix médian.
+3. Trouver le prix minimum et le prix maximum.
+4. Calculer l'étendue : prix maximum - prix minimum.
+5. Calculer le prix au m² de chaque maison. Le prix du tableau est en milliers de DH : le multiplier par 1 000 avant de le diviser par la superficie.
+6. Quelle maison a le prix au m² le plus élevé ?
+7. Quelle relation semble exister entre la superficie et le prix ?
+
+CORRECTION DES CALCULS PRINCIPAUX
+---------------------------------
+Prix total = 400 + 480 + 530 + 650 + 700 + 820 + 850 + 960 = 5 390 kDH
+Prix moyen = 5 390 / 8 = 673,75 kDH
+Prix médian = (650 + 700) / 2 = 675 kDH
+Prix minimum = 400 kDH
+Prix maximum = 960 kDH
+Étendue = 960 - 400 = 560 kDH
+
+Exemple maison A : 400 000 / 50 = 8 000 DH/m²
+Exemple maison D : 650 000 / 80 = 8 125 DH/m²
+
+PARTIE 3 - ANALYSE AVEC PYTHON
+------------------------------
+Créer le fichier analyse.py :
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+data = pd.DataFrame({
+    "superficie": [50, 60, 70, 80, 90, 100, 110, 120],
+    "chambres": [1, 2, 2, 3, 3, 3, 4, 4],
+    "anciennete": [20, 15, 12, 10, 8, 5, 4, 2],
+    "prix": [400, 480, 530, 650, 700, 820, 850, 960]
+})
+
+print("Jeu de données :")
+print(data)
+print("\\nStatistiques descriptives :")
+print(data.describe())
+print("\\nPrix moyen :", data["prix"].mean(), "kDH")
+print("Prix médian :", data["prix"].median(), "kDH")
+print("Prix minimum :", data["prix"].min(), "kDH")
+print("Prix maximum :", data["prix"].max(), "kDH")
+
+data["prix_m2"] = data["prix"] * 1000 / data["superficie"]
+print("\\nPrix au mètre carré :")
+print(data[["superficie", "prix", "prix_m2"]].round(2))
+
+print("\\nCorrélation superficie/prix :")
+print(data["superficie"].corr(data["prix"]))
+
+plt.scatter(data["superficie"], data["prix"])
+plt.xlabel("Superficie (m²)")
+plt.ylabel("Prix (milliers de DH)")
+plt.title("Relation entre superficie et prix")
+plt.grid(True)
+plt.show()
+
+Questions d'analyse :
+- Que représente la moyenne ?
+- Pourquoi la médiane est-elle utile ?
+- Que montre le nuage de points ?
+- Une corrélation positive prouve-t-elle une causalité ?
+- Ces données suffisent-elles à estimer les prix réels ?
+
+PARTIE 4 - MACHINE LEARNING ET STREAMLIT
+----------------------------------------
+Créer le fichier app.py :
+
+import streamlit as st
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score
+
+st.set_page_config(page_title="Estimation immobilière", page_icon="🏠")
+st.title("Estimation du prix d'une maison")
+st.write("Projet pédagogique de régression linéaire")
+
+# Données fictives, prix en milliers de dirhams
+data = pd.DataFrame({
+    "superficie": [50, 60, 70, 80, 90, 100, 110, 120],
+    "chambres": [1, 2, 2, 3, 3, 3, 4, 4],
+    "anciennete": [20, 15, 12, 10, 8, 5, 4, 2],
+    "prix": [400, 480, 530, 650, 700, 820, 850, 960]
+})
+
+st.subheader("1. Explorer les données")
+st.dataframe(data, use_container_width=True)
+
+st.subheader("2. Statistiques descriptives")
+st.write(data.describe())
+
+X = data[["superficie", "chambres", "anciennete"]]
+y = data["prix"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42
+)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+col1, col2 = st.columns(2)
+col1.metric("Erreur absolue moyenne", f"{mae:.1f} kDH")
+col2.metric("Score R² sur le test", f"{r2:.2f}")
+
+st.subheader("3. Estimer une maison")
+superficie = st.slider("Superficie (m²)", 30, 200, 85)
+chambres = st.slider("Nombre de chambres", 1, 6, 3)
+anciennete = st.slider("Ancienneté (années)", 0, 50, 10)
+
+if st.button("Estimer le prix"):
+    maison = pd.DataFrame([{
+        "superficie": superficie,
+        "chambres": chambres,
+        "anciennete": anciennete
+    }])
+    prix = model.predict(maison)[0]
+    st.success(f"Prix estimé : {prix:.1f} milliers de DH")
+    st.caption(f"Soit environ {prix * 1000:,.0f} DH.")
+
+st.caption(
+    "Données fictives et très limitées : estimation uniquement pédagogique, "
+    "à ne pas utiliser pour une transaction immobilière."
+)
+
+PARTIE 5 - INSTALLATION ET EXECUTION
+------------------------------------
+Créer un environnement virtuel (facultatif) :
+python -m venv venv
+
+Sous Windows :
+venv\\Scripts\\activate
+
+Installer les bibliothèques :
+pip install streamlit pandas scikit-learn matplotlib
+
+Exécuter l'analyse :
+python analyse.py
+
+Lancer l'application :
+streamlit run app.py
+
+Adresse locale habituelle : http://localhost:8501
+
+PARTIE 6 - TRAVAIL A FAIRE
+--------------------------
+1. Ajouter une variable : distance au centre-ville.
+2. Calculer la variance et l'écart-type des prix.
+3. Afficher un histogramme des prix dans Streamlit.
+4. Comparer prix prédit et prix réel.
+5. Comparer la régression linéaire avec un arbre de décision.
+6. Expliquer le rôle de X, y, fit() et predict().
+7. Expliquer les métriques MAE et R².
+8. Proposer des données supplémentaires pour rendre le modèle plus réaliste.
+
+NOTIONS ABORDEES
+----------------
+- Moyenne, médiane, minimum, maximum et étendue.
+- Prix au mètre carré.
+- Corrélation et visualisation.
+- Variables explicatives X et cible y.
+- Entraînement d'un modèle de régression.
+- Évaluation avec MAE et R².
+- Application web avec Streamlit.
+
+DUREE INDICATIVE
+----------------
+Calculs et analyse : 1 heure.
+Programmation Python : 1 heure.
+Machine Learning et Streamlit : 1 à 2 heures.
+
+REMARQUE PEDAGOGIQUE
+--------------------
+Le jeu de données contient seulement huit exemples fictifs. Un découpage entraînement/test sur un jeu aussi petit est instable et les métriques ne prouvent pas la fiabilité du modèle. Une application réelle nécessite beaucoup plus de données représentatives et une validation adaptée.
